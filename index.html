@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Movie Recap Studio</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/21myatt/mm-fonts-cdn@v1.0.1/dist/1.0.1/mmfonts.css">
+<style>
+:root{--bg:#0b0f17;--card:#141b26;--line:#243044;--txt:#e7edf5;--dim:#8b98ad;--acc:#4f8cff;--ok:#22c55e}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:"Pyidaungsu","Padauk",sans-serif;padding:14px;max-width:900px;margin:0 auto}
+h1{font-size:1.3rem;color:#fff}h1 b{color:var(--acc)}
+#jsok{padding:6px 10px;border-radius:8px;background:#2a1515;color:#f87171;font-size:.8rem;margin:8px 0}
+#jsok.on{background:#0f2a18;color:var(--ok)}
+.c{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.c h2{font-size:.95rem;margin-bottom:10px;color:#fff}
+.r{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.f1{flex:1;min-width:200px}
+label{display:block;font-size:.78rem;color:var(--dim);margin:6px 0 3px}
+input,select,textarea{width:100%;background:#0e1520;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:9px;font-size:.9rem;font-family:inherit}
+textarea{min-height:90px;resize:vertical}
+input[type=range]{accent-color:var(--acc);padding:0}
+input[type=number]{width:90px}
+input[type=color]{height:36px}
+.b{background:var(--acc);border:0;color:#fff;border-radius:8px;padding:10px 16px;font-size:.9rem;cursor:pointer;font-family:inherit}
+.b:hover{filter:brightness(1.15)}
+.b.s{background:#1e2a3c;color:var(--txt);border:1px solid var(--line)}
+.b.g{background:var(--ok)}
+.hide{display:none!important}
+.p{height:8px;background:#0e1520;border-radius:6px;overflow:hidden;margin-top:8px}
+.p>div{height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--ok));transition:width .3s}
+.st{font-size:.8rem;color:var(--dim);margin-top:4px}
+.bdg{background:#1e2a3c;border-radius:12px;padding:2px 8px;font-size:.7rem;color:var(--dim)}
+.stage{position:relative;background:#000;border-radius:10px;overflow:hidden;touch-action:none}
+.stage video{width:100%;display:block}
+#blurBox{position:absolute;left:20%;top:20%;width:25%;height:20%;background:rgba(30,60,120,.4);border:2px dashed var(--acc);cursor:move;touch-action:none}
+#subBox{position:absolute;left:5%;width:90%;bottom:8%;text-align:center;font-weight:700;text-shadow:0 2px 6px #000,0 0 3px #000;cursor:grab;touch-action:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:640px){.g2{grid-template-columns:1fr}}
+.sws{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin-top:5px}
+.sw{aspect-ratio:1;border-radius:6px;border:2px solid transparent;cursor:pointer}
+.sw.on{border-color:#fff}
+#steps li{padding:6px 8px;font-size:.85rem;color:var(--dim);list-style:none;border-radius:6px}
+#steps li.done{color:var(--ok)}
+#steps li.act{background:#13253f;color:#fff}
+.hint{background:#12203a;border-radius:8px;padding:8px;font-size:.75rem;color:var(--dim);margin-top:8px;line-height:1.6}
+.mono{font-family:monospace}
+</style>
+</head>
+<body>
+<h1>🎬 Movie Recap <b>Studio</b></h1>
+<div id="jsok">⏳ JavaScript စစ်ဆေးနေသည်...</div>
+
+<div class="c">
+<h2>🔑 AssemblyAI API Key</h2>
+<div class="r"><div class="f1"><input type="password" id="aKey" placeholder="API key ထည့်ပါ"></div>
+<button class="b s" onclick="saveKey()">💾 Save</button></div>
+<div class="st" id="keyStat"></div>
+</div>
+
+<div class="c">
+<h2>1။ Video <span class="bdg">Download %</span></h2>
+<div class="r"><div class="f1"><input type="url" id="vUrl" placeholder="https://example.com/movie.mp4"></div>
+<button class="b s" onclick="vFile.click()">📁 ဖုန်းထဲက Video</button>
+<input type="file" id="vFile" accept="video/*" class="hide">
+<button class="b" onclick="loadVid()">📥 Download</button></div>
+<div class="p"><div id="dlB"></div></div>
+<div class="st" id="dlS">mp4 direct link ထည့်ပါ။ TikTok ကတော့ app ထဲ save လုပ်ပြီး File နဲ့ ရွေးပါ။</div>
+</div>
+
+<div class="c hide" id="pvCard">
+<h2>2။ Preview · Blur · Speed</h2>
+<div class="stage" id="stage">
+<video id="pv" controls playsinline></video>
+<div id="blurBox" class="hide"></div>
+<div id="subBox" class="hide">မြန်မာစာတန်း စမ်းကြည့်ရန်</div>
+</div>
+<div class="r" style="margin-top:10px">
+<button class="b s" onclick="blurOn=!blurOn;blurBox.classList.toggle('hide',!blurOn)">🔵 Blur ဖွင့်/ပိတ်</button>
+<div class="f1"><label>Blur <span id="blV">60%</span></label>
+<input type="range" id="blR" min="0" max="100" value="60" oninput="blV.textContent=this.value+'%'"></div>
+</div>
+<div class="r">
+<div class="f1"><label>Video Speed <span id="spV">1x</span> (0.25x–100x)</label>
+<input type="range" id="spR" min="0.25" max="16" step="0.25" value="1" oninput="setSp(+this.value)"></div>
+<div><label>100x ထိ ရိုက်</label><input type="number" id="spN" min="0.25" max="100" step="0.25" value="1" onchange="setSp(+this.value)"></div>
+</div>
+</div>
+
+<div class="c">
+<h2>3။ အသံ <span class="bdg">Thiha / Nilar</span></h2>
+<div class="g2">
+<div><label>အသံ</label><select id="voice"><option value="my-MM-ThihaNeural">Edge Thiha</option><option value="my-MM-NilarNeural">Edge Nilar</option></select></div>
+<div><label>Volume <span id="volV">+0%</span></label><input type="range" id="vol" min="-50" max="50" value="0" oninput="volV.textContent=sg(this.value)+'%'"></div>
+<div><label>အသံ Speed <span id="rspV">+0%</span></label><input type="range" id="rsp" min="-50" max="100" value="0" oninput="rspV.textContent=sg(this.value)+'%'"></div>
+<div><label>Pitch <span id="pitV">+0Hz</span></label><input type="range" id="pit" min="-50" max="50" value="0" oninput="pitV.textContent=sg(this.value)+'Hz'"></div>
+</div>
+<div class="r" style="margin-top:8px"><div class="f1"><input type="text" id="ttsT" value="မင်္ဂလာပါ။ ဒီက ရုပ်ရှင်ပြန်ပြောပြမှုပါ။"></div>
+<button class="b s" onclick="testVoice()">🔊 စမ်းနားထောင်</button></div>
+<div class="p"><div id="ttsB"></div></div><div class="st" id="ttsS"></div>
+</div>
+
+<div class="c">
+<h2>4။ မူရင်းစာထုတ် (AssemblyAI) <span class="bdg">Copy</span></h2>
+<button class="b" id="trB" onclick="transcribe()">🎙 မူရင်းစာထုတ်မည်</button>
+<div class="p"><div id="asB"></div></div>
+<div class="st" id="asS">ဖုန်းထဲက video file ရွေးထားပြီးမှ နှိပ်ပါ။</div>
+<textarea id="origT" class="hide" style="margin-top:8px" readonly></textarea>
+<div class="r" style="margin-top:8px">
+<button class="b s" onclick="copyOrig()">📋 Copy</button>
+<a class="b s" href="https://gemini.google.com/app" target="_blank" style="text-decoration:none">🤖 Gemini ဖွင့်မည်</a>
+</div>
+<div class="hint">မူရင်းစာထွက်ရင် <b>Copy</b> → Gemini ထဲ paste → "မြန်မာလို့ ဘာသာပြန်ပေး" လို့မေး → ပြန်ပြီးစာကို Section 5 မှာ paste။</div>
+</div>
+
+<div class="c">
+<h2>5။ မြန်မာစာတန်းထိုး <span class="bdg">Font 10</span></h2>
+<textarea id="mmT" placeholder="ဘာသာပြန်ပြီး မြန်မာစာကို paste လုပ်ပါ..."></textarea>
+<div class="r" style="margin-top:8px"><button class="b g" onclick="makeSubs()">➡ ဆက်သွားမည်</button>
+<span class="bdg" id="subN">စာတန်း 0 ကြောင်း</span></div>
+<div class="g2" style="margin-top:8px">
+<div><label>Line Mode</label><select id="lnM" onchange="styleSub()"><option value="1">1 Line</option><option value="2" selected>2 Line</option></select></div>
+<div><label>Size <span id="fsV">22px</span></label><input type="range" id="fsR" min="10" max="40" value="22" oninput="fsV.textContent=this.value+'px';styleSub()"></div>
+<div><label>မြန်မာ Font (10)</label><select id="fnt" onchange="styleSub()">
+<option value="Pyidaungsu">Pyidaungsu</option><option value="Padauk">Padauk</option>
+<option value="Myanmar3">Myanmar3</option><option value="Mon3">MON3</option>
+<option value="MasterpieceUniRound">Masterpiece Round</option><option value="MyanmarGantgaw">Gantgaw</option>
+<option value="Jasmine Unicode">Jasmine</option><option value="KT Unicode 03">KT Unicode 03</option>
+<option value="Parabaik">Parabaik</option><option value="NotoSansMyanmar">Noto Myanmar</option></select></div>
+<div><label>အရောင်</label><input type="color" id="col" value="#ffffff" oninput="styleSub()">
+<div class="sws" id="sws"></div></div>
+</div>
+</div>
+
+<div class="c">
+<h2>6။ စတင်မည် <span class="bdg">% · ✓ · မိနစ်</span></h2>
+<ul id="steps">
+<li id="s1">1. Video ရယူခြင်း</li>
+<li id="s2">2. မူရင်းစာထုတ်ခြင်း</li>
+<li id="s3">3. မြန်မာအသံထုတ်ခြင်း</li>
+<li id="s4">4. Video နဲ့ အသံညှိခြင်း</li>
+<li id="s5">5. Render + MP4</li>
+</ul>
+<div class="p"><div id="stB"></div></div>
+<div class="r" style="justify-content:space-between"><div class="st" id="stP">0% — အသင့်</div><div class="st mono" id="stM">00:00</div></div>
+<button class="b g" id="goB" style="width:100%;margin-top:10px;font-size:1.05rem" onclick="startAll()">▶ စတင်မည်</button>
+</div>
+
+<div class="c hide" id="resC">
+<h2>7။ ✅ အောင်မြင်ပါပြီ</h2>
+<div class="st" id="resS"></div>
+<video id="outV" controls playsinline style="width:100%;border-radius:10px;background:#000;margin-top:8px"></video>
+<div class="r" style="margin-top:10px"><a class="b g" id="dlA" download="movie_recap.mp4">📥 MP4 ဒေါင်း</a></div>
+</div>
+
+<script>
+var $=function(id){return document.getElementById(id)};
+window.addEventListener('error',function(e){var d=$('jsok');d.className='';d.textContent='❌ JS Error: '+e.message});
+var TT='6A29AA14-2722-4A7C-9E0A-D5F4E7C9C6E7';
+var vidBlob=null,vidURL=null,subs=[],audioBlob=null,rate=1,origText='',blurOn=false,t0=null;
+
+function sg(v){v=+v;return(v>0?'+':'')+v}
+function saveKey(){var k=$('aKey').value.trim();if(!k)return alert('Key ထည့်ပါ');localStorage.setItem('mrs',k);$('keyStat').textContent='✅ သိမ်းပြီး'}
+try{if(localStorage.getItem('mrs')){$('aKey').value=localStorage.getItem('mrs');$('keyStat').textContent='✅ Key ရှိပြီး'}}catch(e){}
+
+/* ── 1. Video ── */
+$('vFile').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;vidBlob=f;
+setVid(URL.createObjectURL(f),'✅ File ရွေးပြီး ('+(f.size/1048576).toFixed(1)+' MB)')});
+function loadVid(){var u=$('vUrl').value.trim();if(!u)return alert('Link ထည့်ပါ');
+$('dlS').textContent='ဒေါင်းနေ...';
+fetch(u).then(function(r){if(!r.ok)throw 0;
+var t=+r.headers.get('content-length');
+if(!t||!r.body)return r.blob();
+var rd=r.body.getReader(),g=0,c=[];
+function p(){return rd.read().then(function(x){
+if(x.done)return new Blob(c,{type:'video/mp4'});
+g+=x.value.length;c.push(x.value);
+var pc=Math.round(g/t*100);
+$('dlB').style.width=pc+'%';
+$('dlS').textContent=pc+'% — '+(g/1048576).toFixed(1)+' MB';
+return p()})}
+return p()})
+.then(function(b){vidBlob=b;setVid(URL.createObjectURL(b),'✅ ဒေါင်းပြီး ('+(b.size/1048576).toFixed(1)+' MB)')})
+.catch(function(){$('dlS').textContent='❌ မရပါ (CORS) — 📁 File နဲ့ရွေးပါ'})}
+
+function setVid(u,m){vidURL=u;$('pv').src=u;$('pvCard').classList.remove('hide');
+$('dlS').textContent=m;$('s1').className='done'}
+function setSp(v){v=Math.min(100,Math.max(.25,v||1));
+$('pv').playbackRate=v;$('spV').textContent=v+'x';$('spN').value=v}
+
+/* ── 2. Drag blur box ── */
+(function(){var box=$('blurBox'),stage=$('stage'),drag=false,dx=0,dy=0;
+box.addEventListener('pointerdown',function(e){drag=true;
+var r=box.getBoundingClientRect();dx=e.clientX-r.left;dy=e.clientY-r.top;
+e.preventDefault();box.setPointerCapture(e.pointerId)});
+box.addEventListener('pointermove',function(e){if(!drag)return;
+var s=stage.getBoundingClientRect(),r=box.getBoundingClientRect();
+var x=Math.max(0,Math.min(e.clientX-s.left-dx,s.width-r.width));
+var y=Math.max(0,Math.min(e.clientY-s.top-dy,s.height-r.height));
+box.style.left=x/s.width*100+'%';box.style.top=y/s.height*100+'%'});
+box.addEventListener('pointerup',function(){drag=false})})();
+
+/* ── 2b. Drag subtitle ── */
+(function(){var box=$('subBox'),stage=$('stage'),drag=false,d=0;
+box.addEventListener('pointerdown',function(e){drag=true;box.setPointerCapture(e.pointerId);
+var s=stage.getBoundingClientRect();
+d=e.clientY-(box.getBoundingClientRect().bottom-s.bottom);e.preventDefault()});
+box.addEventListener('pointermove',function(e){if(!drag)return;
+var s=stage.getBoundingClientRect();
+var b=Math.max(20,Math.min(s.bottom-e.clientY+d,s.height-30));
+box.style.bottom=b/s.height*100+'%'});
+box.addEventListener('pointerup',function(){drag=false})})();
+
+/* ── Colors ── */
+['#ffffff','#ffff00','#ff4444','#44ff44','#00e5ff','#ff9100','#ff66ff','#b266ff','#6effc8','#111111'].forEach(function(c,i){
+var d=document.createElement('div');d.className='sw'+(i?'':' on');d.style.background=c;
+d.onclick=function(){var a=document.querySelectorAll('.sw');
+for(var j=0;j<a.length;j++)a[j].classList.remove('on');
+d.classList.add('on');$('col').value=c;styleSub()};
+$('sws').appendChild(d)});
+
+function styleSub(){var b=$('subBox');b.classList.remove('hide');
+b.style.fontFamily='"'+$('fnt').value+'","Pyidaungsu",sans-serif';
+b.style.color=$('col').value;b.style.fontSize=$('fsR').value+'px';
+b.style.whiteSpace=$('lnM').value==='2'?'normal':'nowrap'}
+
+/* ── 3. Edge TTS ── */
+function gec(){var t=Math.floor(Date.now()/1000)+11644473600,r=t-t%300;
+return crypto.subtle.digest('SHA-256',new TextEncoder().encode(r*1e7+TT))
+.then(function(h){var a=new Uint8Array(h),s='';
+for(var i=0;i<a.length;i++)s+=('0'+a[i].toString(16)).slice(-2);
+return s.toUpperCase()})}
+
+function edgeTTS(txt){return new Promise(function(res,rej){
+gec().then(function(g){
+var id='';for(var i=0;i<32;i++)id+=Math.floor(Math.random()*16).toString(16);
+var ws=new WebSocket('wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken='+TT+'&Sec-MS-GEC='+g+'&Sec-MS-GEC-Version=1-130.0.2849.68&ConnectionId='+id);
+var c=[],ok=false;
+var tm=setTimeout(function(){if(!ok){ws.close();rej(new Error('TTS timeout'))}},60000);
+ws.binaryType='arraybuffer';
+ws.onopen=function(){
+ws.send('X-Timestamp:'+new Date().toUTCString()+'\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n'
++JSON.stringify({context:{synthesis:{audio:{metadataoptions:{sentenceBoundaryEnabled:false,wordBoundaryEnabled:false},outputFormat:'audio-24khz-48kbitrate-mono-mp3'}}}}));
+var e=txt.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+ws.send('X-RequestId:'+id+'\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:'+new Date().toUTCString()+'Z\r\nPath:ssml\r\n\r\n'
++"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='my-MM'><voice name='"+$('voice').value
++"'><prosody rate='"+sg($('rsp').value)+"%' pitch='"+sg($('pit').value)+"Hz' volume='"+sg($('vol').value)+"%'>"+e+'</prosody></voice></speak>')};
+ws.onmessage=function(ev){
+if(typeof ev.data==='string'){
+if(ev.data.indexOf('Path:turn.end')>=0){ok=true;clearTimeout(tm);ws.close();
+if(c.length)res(new Blob(c,{type:'audio/mpeg'}));else rej(new Error('audio မရ'))}
+}else{var h=new DataView(ev.data).getUint16(0);
+if(ev.data.byteLength>h+2)c.push(new Uint8Array(ev.data.slice(2+h)))}};
+ws.onerror=function(){if(!ok){clearTimeout(tm);rej(new Error('TTS မချိတ်ရ — internet စစ်ပါ'))}}
+}).catch(rej)})}
+
+function testVoice(){var t=$('ttsT').value.trim();if(!t)return alert('စမ်းစာရိုက်ပါ');
+$('ttsS').textContent='ထုတ်နေ...';$('ttsB').style.width='40%';
+edgeTTS(t).then(function(b){$('ttsB').style.width='100%';
+$('ttsS').textContent='✅ နားထောင်ပါ...';
+new Audio(URL.createObjectURL(b)).play()})
+.catch(function(e){$('ttsB').style.width='0';$('ttsS').textContent='❌ '+e.message})}
+
+/* ── 4. AssemblyAI ── */
+function transcribe(){var k=localStorage.getItem('mrs')||$('aKey').value.trim();
+if(!k)return alert('Key ထည့်ပါ');if(!vidBlob)return alert('Video file ရွေးပါ');
+$('trB').disabled=true;$('asS').textContent='Upload နေ...';$('asB').style.width='10%';
+fetch('https://api.assemblyai.com/v2/upload',{method:'POST',headers:{authorization:k},body:vidBlob})
+.then(function(u){if(!u.ok)throw new Error('Upload fail');return u.json()})
+.then(function(u){$('asB').style.width='45%';$('asS').textContent='စာထုတ်နေ...';
+return fetch('https://api.assemblyai.com/v2/transcript',{method:'POST',headers:{authorization:k},
+body:JSON.stringify({audio_url:u.upload_url,language_detection:true})})
+.then(function(r){return r.json()})})
+.then(function(t){
+function poll(){return fetch('https://api.assemblyai.com/v2/transcript/'+t.id,{headers:{authorization:k}})
+.then(function(r){return r.json()}).then(function(r){
+if(r.status==='queued'||r.status==='processing'){$('asB').style.width='80%';
+$('asS').textContent=r.status+'...';
+return new Promise(function(s){setTimeout(s,5000)}).then(poll)}
+return r})}
+return poll()})
+.then(function(r){if(r.status!=='completed')throw new Error('Fail: '+r.status);
+origText=r.text||'';$('origT').value=origText;$('origT').classList.remove('hide');
+$('asB').style.width='100%';$('asS').textContent='✅ ထွက်ပြီး — Copy နှိပ်ပါ';$('s2').className='done'})
+.catch(function(e){$('asS').textContent='❌ '+e.message})
+.finally(function(){$('trB').disabled=false})}
+
+function copyOrig(){if(!origText)return alert('မရှိသေးပါ');
+navigator.clipboard.writeText(origText).then(function(){
+alert('✅ Copy လို့ရပြီး!\n\n👉 Gemini ထဲ paste လုပ်ပြီး မြန်မာလို့ ဘာသာပြန်ခိုင်းပါ\n👉 ပြန်ပြီးရင် Section 5 မှာ paste လုပ်ပါ')})}
+
+/* ── 5. Subtitles ── */
+function makeSubs(){var t=$('mmT').value.trim();if(!t)return alert('မြန်မာစာ paste လုပ်ပါ');
+subs=[];t.split(/\n+/).forEach(function(L){L=L.trim();if(!L)return;
+for(var i=0;i<L.length;i+=55){var p=L.slice(i,i+55);
+if(p.trim())subs.push({s:0,e:0,txt:p})}});
+$('subN').textContent='စာတန်း '+subs.length+' ကြောင်း';
+styleSub();showSub(0);
+alert('✅ '+subs.length+' ကြောင်း ပြင်ဆင်ပြီး — ▶ စတင်မည် နှိပ်လို့ရပြီ')}
+
+function showSub(i){if(!subs[i])return;var b=$('subBox'),t=subs[i].txt;
+if($('lnM').value==='2'&&t.length>28){
+var m=Math.ceil(t.length/2),sp=t.lastIndexOf(' ',m),c=sp>10?sp:m;
+b.innerHTML=t.slice(0,c).replace(/</g,'&lt;')+'<br>'+t.slice(c).trim().replace(/</g,'&lt;')}
+else b.textContent=t;
+b.classList.remove('hide');
+var fs=+$('fsR').value;b.style.fontSize=fs+'px';
+var n=0;
+while(b.scrollWidth>$('stage').clientWidth*.94&&fs>9&&n<60){fs--;b.style.fontSize=fs+'px';n++}}
+
+$('pv').addEventListener('timeupdate',function(){if(!subs.length)return;
+var t=this.currentTime,i=-1;
+for(var k=0;k<subs.length;k++)if(t>=subs[k].s&&t<subs[k].e){i=k;break}
+if(i>=0)showSub(i);else $('subBox').classList.add('hide')});
+
+/* ── 6. MAIN ── */
+function setP(p,m){$('stB').style.width=p+'%';$('stP').textContent=p+'% — '+m}
+function aDur(b){return new Promise(function(r){var a=new Audio();a.preload='metadata';
+a.onloadedmetadata=function(){r(a.duration||1)};
+a.onerror=function(){r(1)};a.src=URL.createObjectURL(b)})}
+
+async function startAll(){
+if(!vidURL)return alert('Video ရွေးပါ (Section 1)');
+if(!subs.length)return alert('Section 5 မှာ မြန်မာစာ ထည့်ပါ');
+t0=Date.now();
+var tm=setInterval(function(){var s=Math.floor((Date.now()-t0)/1000);
+$('stM').textContent=('0'+Math.floor(s/60)).slice(-2)+':'+('0'+s%60).slice(-2)},500);
+$('goB').disabled=true;$('s1').className='done';$('s3').className='act';
+try{
+var parts=[],cur=0;
+for(var i=0;i<subs.length;i++){
+setP(Math.round(10+45*i/subs.length),'မြန်မာအသံထုတ်နေ ('+(i+1)+'/'+subs.length+')');
+var b=await edgeTTS(subs[i].txt);parts.push(b);
+var d=await aDur(b);subs[i].s=cur;subs[i].e=cur+d;cur+=d}
+audioBlob=new Blob(parts,{type:'audio/mpeg'});
+$('s3').className='done';$('s4').className='act';
+var vd=$('pv').duration||1;
+rate=Math.min(100,Math.max(.25,cur/vd));
+$('pv').playbackRate=rate;$('spV').textContent=(+rate.toFixed(2))+'x';$('spN').value=+rate.toFixed(2);
+subs.forEach(function(s){s.s/=rate;s.e/=rate});
+setP(70,'Sync: video '+(+rate.toFixed(2))+'x (အသံမထိ)');
+$('s4').className='done';$('s5').className='act';
+setP(75,'Render နေ...');
+await render();
+setP(100,'✅ ပြီးပါပြီ');$('s5').className='done'}
+catch(e){alert('❌ '+e.message)}
+clearInterval(tm);$('goB').disabled=false}
+
+/* ── 7. Render ── */
+function render(){return new Promise(function(res,rej){
+var v=document.createElement('video');
+v.src=vidURL;v.muted=true;v.playsInline=true;v.playbackRate=rate;
+var W=640,H=Math.round(W*($('pv').videoHeight||9)/($('pv').videoWidth||16))||360;
+var c=document.createElement('canvas');c.width=W;c.height=H;
+var x=c.getContext('2d');
+var au=new Audio(URL.createObjectURL(audioBlob));
+var ac=new AudioContext();
+var sn=ac.createMediaElementSource(au);
+var ds=ac.createMediaStreamDestination();
+sn.connect(ds);sn.connect(ac.destination);
+var st=c.captureStream(30);
+ds.stream.getAudioTracks().forEach(function(t){st.addTrack(t)});
+var mime=MediaRecorder.isTypeSupported('video/mp4')?'video/mp4':'video/webm';
+var rc=new MediaRecorder(st,{mimeType:mime,videoBitsPerSecond:2500000});
+var bl=[];
+rc.ondataavailable=function(e){if(e.data.size)bl.push(e.data)};
+rc.onstop=function(){ac.close();
+var out=new Blob(bl,{type:mime}),u=URL.createObjectURL(out);
+$('outV').src=u;$('dlA').href=u;
+$('dlA').download='movie_recap.'+(mime.indexOf('mp4')>=0?'mp4':'webm');
+$('resS').textContent='✅ အသံ '+(audioBlob.size/1048576).toFixed(1)+' MB · '+(+rate.toFixed(2))+'x · စာတန်း '+subs.length+' ကြောင်း';
+$('resC').classList.remove('hide');
+$('resC').scrollIntoView({behavior:'smooth'});res()};
+var bx=blurOn?{l:parseFloat($('blurBox').style.left)||20,
+t:parseFloat($('blurBox').style.top)||20,
+w:parseFloat($('blurBox').style.width)||25,
+h:parseFloat($('blurBox').style.height)||20}:null;
+var sb=parseFloat($('subBox').style.bottom)||8;
+function fr(){
+if(v.ended){try{rc.stop()}catch(e){}return}
+x.drawImage(v,0,0,W,H);
+if(bx){x.save();x.beginPath();
+x.rect(bx.l/100*W,bx.t/100*H,bx.w/100*W,bx.h/100*H);x.clip();
+x.filter='blur('+$('blR').value/5+'px)';
+x.drawImage(c,-6,0,W+12,H);x.filter='none';x.restore()}
+var t=v.currentTime,idx=-1;
+for(var k=0;k<subs.length;k++)if(t>=subs[k].s&&t<subs[k].e){idx=k;break}
+if(idx>=0){var tx=subs[idx].txt;
+x.textAlign='center';x.fillStyle=$('col').value;
+x.shadowColor='rgba(0,0,0,.9)';x.shadowBlur=6;x.shadowOffsetY=2;
+var ls=[tx];
+if($('lnM').value==='2'&&x.measureText(tx).width>W*.9){
+var m=Math.ceil(tx.length/2),sp=tx.lastIndexOf(' ',m),cc=sp>10?sp:m;
+ls=[tx.slice(0,cc),tx.slice(cc).trim()]}
+var fs=+$('fsR').value,ov=true,n=0;
+x.font='bold '+fs+'px "'+$('fnt').value+'","Pyidaungsu",sans-serif';
+while(ov&&fs>9&&n<80){ov=false;
+for(var j=0;j<ls.length;j++)if(x.measureText(ls[j]).width>W*.94)ov=true;
+if(ov){fs--;n++;
+x.font='bold '+fs+'px "'+$('fnt').value+'","Pyidaungsu",sans-serif'}}
+var base=H-sb/100*H-(ls.length-1)*fs*1.25;
+for(var j2=0;j2<ls.length;j2++)x.fillText(ls[j2],W/2,base+j2*fs*1.25);
+x.shadowBlur=0;x.shadowOffsetY=0}
+requestAnimationFrame(fr)}
+v.onloadedmetadata=function(){rc.start(1000);au.play();v.play();fr()};
+au.onended=function(){try{rc.stop()}catch(e){}};
+v.onerror=function(){rej(new Error('video ဖတ်မရ'))}})}
+
+/* ── JS OK ── */
+try{
+if(typeof edgeTTS==='function'&&typeof transcribe==='function'
+&&typeof render==='function'&&typeof startAll==='function'){
+$('jsok').className='on';
+$('jsok').textContent='✅ JavaScript အလုပ်လုပ်နေသည် — ခလုတ်များ သုံးနိုင်ပါပြီ'}}
+catch(e){}
+</script>
+</body>
+</html>
